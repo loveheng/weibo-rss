@@ -6,6 +6,7 @@ import NodeRSS from 'rss';
 import { RSSKoaContext, RSSKoaState } from '../types';
 import config from '../config';
 import { DomainNotFoundError, statusToHTML, UserNotFoundError } from './weibo/weibo';
+import { TwitterData, UserNotFoundError as TwitterUserNotFoundError, tweetToHTML } from './twitter/twitter';
 import { ThrottledError } from './throttler';
 import { logger } from './logger';
 
@@ -87,6 +88,64 @@ export const registerRoutes = (
       }
       ctx.status = 500;
       ctx.body = `未知错误，需管理员检查日志。uid: ${uid}`;
+      logger.error(error);
+    }
+  });
+
+  router.get('/rss/twitter/:username', async (ctx) => {
+    const username = ctx.params['username'];
+    try {
+      if (!/^[a-zA-Z0-9_]{1,15}$/.test(username)) {
+        ctx.status = 404;
+        ctx.body = `用户名格式有误。username: ${username}`;
+        return;
+      }
+
+      let cacheMiss = false;
+      const xmlData = await ctx.requestCollapsing.run(`twitter:${username}`, async () => {
+        return await ctx.cache.memo(async () => {
+          const twitterData = await ctx.twitter.fetchUserLatestTweets(username);
+          if (twitterData) {
+            const feed = new NodeRSS({
+              site_url: `https://twitter.com/${username}`,
+              feed_url: '',
+              title: `${twitterData.name} (@${twitterData.username}) 的推文`,
+              description: twitterData.description,
+              generator: 'https://github.com/zgq354/weibo-rss',
+              ttl: config.rssTTL,
+            });
+            twitterData.tweets?.forEach((tweet) => {
+              if (!tweet) return;
+              const title = tweet.text.replace(/<[^>]+>/g, '').replace(/[\n]/g, '').substr(0, 25);
+              feed.item({
+                title: title || null,
+                description: tweetToHTML(tweet),
+                url: `https://twitter.com/${username}/status/${tweet.id}`,
+                date: new Date(tweet.created_at),
+              });
+            });
+            cacheMiss = true;
+            return feed.xml();
+          }
+        }, `twitter-xml-${username}`, config.cacheTTL.rssXml);
+      });
+
+      ctx.set('Content-Type', 'text/xml');
+      ctx.body = xmlData;
+      ctx.state.hit = cacheMiss ? 0 : 1;
+    } catch (error) {
+      if (error instanceof TwitterUserNotFoundError) {
+        ctx.status = 404;
+        ctx.body = `找不到用户，可能用户名有误或用户不存在。username: ${username}`;
+        return;
+      }
+      if (error instanceof ThrottledError) {
+        ctx.status = 503;
+        ctx.body = `暂时无法拉取到数据，请稍后再试。username: ${username}`;
+        return;
+      }
+      ctx.status = 500;
+      ctx.body = `未知错误，需管理员检查日志。username: ${username}`;
       logger.error(error);
     }
   });

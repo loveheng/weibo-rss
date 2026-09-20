@@ -1,10 +1,12 @@
 import { Tracer } from "tracer";
 import { WeiboData } from "./modules/weibo/weibo";
+import { TwitterData } from "./modules/twitter/twitter";
 import { RequestCollapsing } from "./modules/requestCollapsing";
 
 export interface RSSKoaContext {
   cache: CacheInterface;
   weibo: WeiboData;
+  twitter: TwitterData;
   requestCollapsing: RequestCollapsing;
 }
 
@@ -80,4 +82,36 @@ export interface WeiboUserData {
   description: string,
   containerId?: string,
   statusList?: WeiboStatus[],
+}
+
+export interface TwitterStatus {
+  id: string;
+  text: string;
+  created_at: string;
+  publicMetrics: {
+    retweet_count: number;
+    reply_count: number;
+    like_count: number;
+    quote_count: number;
+  };
+  entities?: {
+    urls?: any[];
+    hashtags?: any[];
+    mentions?: any[];
+  };
+}
+
+export interface TwitterUserData {
+  id: string;
+  username: string;
+  name: string;
+  description: string;
+  profileImageUrl?: string;
+  publicMetrics?: {
+    followers_count: number;
+    following_count: number;
+    tweet_count: number;
+    listed_count: number;
+  };
+  tweets: TwitterStatus[];
 }

@@ -30,11 +30,13 @@ const defaultConfig = {
     apiLongText: 7 * 24 * 60 * 60,
     apiDetail: 7 * 24 * 60 * 60,
     apiDomain: 7 * 24 * 60 * 60,
+    apiTwitterUserInfo: 1 * 24 * 60 * 60,
+    apiTwitterTweets: 15 * 60,
   },
-  // 图片缓存代理
   imageCache: 'https://image.baidu.com/search/down?url=',
-  // 个人账号 Cookie，用于提升抗封禁能力
   weiboCookie: process.env.WEIBO_COOKIE || '',
+  twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
+  twitterProxy: process.env.TWITTER_PROXY || 'http://192.168.1.40:2080',
 };
 
 /**
