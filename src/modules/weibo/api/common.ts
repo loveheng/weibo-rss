@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { Agent } from "https";
 import config from "../../../config";
 
-export const TIME_OUT = 3000;
+export const TIME_OUT = 3000*3;
 export const MOCK_UA =
   "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36";
 
