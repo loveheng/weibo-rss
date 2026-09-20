@@ -63,28 +63,26 @@ export const buildAxiosConfig = (overrides?: AxiosRequestConfig): AxiosRequestCo
 };
 
 export const createTwitterInstance = () => {
-  const proxyUrl = config.twitterProxy || process.env.TWITTER_PROXY;
-  
   const axiosConfig: AxiosRequestConfig = {
     ...buildAxiosConfig(),
-    // 禁用 IPv6，强制使用 IPv4
-    family: 4,
-    // 创建自定义代理配置
-    ...(proxyUrl ? {
-      proxy: {
-        host: proxyUrl.includes('://') 
-          ? proxyUrl.split('://')[1].split(':')[0] 
-          : proxyUrl.split(':')[0],
-        port: proxyUrl.includes('://')
-          ? parseInt(proxyUrl.split('://')[1].split(':')[1] || '2080')
-          : parseInt(proxyUrl.split(':')[1] || '2080'),
-        protocol: proxyUrl.includes('://') 
-          ? proxyUrl.split('://')[0] 
-          : 'http'
-      }
-    } : {})
   };
-  
+
+  // 只在配置了代理时才使用代理（本地测试环境）
+  const proxyUrl = config.twitterProxy;
+  if (proxyUrl) {
+    try {
+      const url = new URL(proxyUrl);
+      axiosConfig.proxy = {
+        host: url.hostname,
+        port: parseInt(url.port) || 2080,
+        protocol: url.protocol.replace(':', '')
+      };
+      logger.debug(`[twitter] 使用代理: ${proxyUrl}`);
+    } catch (err) {
+      logger.warn(`[twitter] 代理配置格式错误: ${proxyUrl}`);
+    }
+  }
+
   const instance = axios.create(axiosConfig);
   return instance;
 };
