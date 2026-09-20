@@ -1,53 +1,27 @@
-# Created by .ignore support plugin (hsz.mobi)
-### JetBrains template
-# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
-# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
-
-# User-specific stuff:
-# Sensitive or high-churn files:
-.idea/**/dataSources/
-.idea/**/dataSources.ids
-.idea/**/dataSources.xml
-.idea/**/dataSources.local.xml
-.idea/**/sqlDataSources.xml
-.idea/**/dynamic.xml
-.idea/**/uiDesigner.xml
-
-# Gradle:
-.idea/**/gradle.xml
-.idea/**/libraries
-
-# Mongo Explorer plugin:
-.idea/**/mongoSettings.xml
-
-## File-based project format:
-*.iws
-
-## Plugin-specific files:
-
-# IntelliJ
-/out/
-
-# mpeltonen/sbt-idea plugin
-.idea_modules/
-
-.idea/
-
-# JIRA plugin
-atlassian-ide-plugin.xml
-
-# Crashlytics plugin (for Android Studio and IntelliJ)
-com_crashlytics_export_strings.xml
-crashlytics.properties
-crashlytics-build.properties
-fabric.properties
-
+# 依赖包 (Dependencies)
 /node_modules/
 
+# 构建产物 (Build Output)
+/dist/
+/out/
+yarn-error.log
+npm-debug.log*
+
+# 运行时/本地数据 (Local Data)
 /data/*
 !/data/.gitkeep
-/dist/
-yarn-error.log
 
-.DS_Store
+# 配置文件与环境变量 (Configs & Environment)
 /config.js
+.env*.local
+
+# 系统与编辑器杂项 (System & IDEs)
+.DS_Store
+Thumbs.db
+
+# JetBrains IDE (WebStorm / CLion 等)
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
