@@ -4,9 +4,12 @@ WORKDIR /app
 # 复制依赖定义
 COPY package.json package-lock.json ./
 
-# 安装依赖并构建
-RUN npm ci && \
-    npm run build
+# 安装依赖
+RUN npm ci
+
+# 复制项目源码并构建
+COPY . .
+RUN npm run build
 
 # 运行阶段
 FROM node:20-alpine
