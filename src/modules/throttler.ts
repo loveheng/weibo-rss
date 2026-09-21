@@ -19,11 +19,11 @@ export class Throttler {
   retryDelayMs: number;
   logger: LoggerInterface;
 
-  constructor(name = '', log: LoggerInterface = logger) {
+  constructor(name = '', log: LoggerInterface = logger, retryDelayMs = 600000) {
     this.name = name;
     this.logger = log;
     this.queue = new Queue({ concurrency: 1 });
-    this.retryDelayMs = 600000;
+    this.retryDelayMs = retryDelayMs;
     this.enable = true;
     this.lastUpdateTime = Date.now();
   }

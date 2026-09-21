@@ -1,12 +1,12 @@
 import { Tracer } from "tracer";
 import { WeiboData } from "./modules/weibo/weibo";
-import { TwitterData } from "./modules/twitter/twitter";
+import { InstagramData } from "./modules/instagram/instagram";
 import { RequestCollapsing } from "./modules/requestCollapsing";
 
 export interface RSSKoaContext {
   cache: CacheInterface;
   weibo: WeiboData;
-  twitter: TwitterData;
+  instagram: InstagramData;
   requestCollapsing: RequestCollapsing;
 }
 
@@ -82,6 +82,47 @@ export interface WeiboUserData {
   description: string,
   containerId?: string,
   statusList?: WeiboStatus[],
+}
+
+export interface InstagramMedia {
+  id: string;
+  // 帖子短码，如 'C0abcdefg'
+  shortcode: string;
+  display_url?: string;
+  video_url?: string;
+  is_video: boolean;
+  taken_at_timestamp: number;
+  edge_media_to_caption?: {
+    edges?: {
+      node?: {
+        text: string;
+      };
+    }[];
+  };
+  edge_sidecar_to_children?: {
+    edges?: {
+      node?: {
+        display_url?: string;
+        video_url?: string;
+        is_video: boolean;
+      };
+    }[];
+  };
+  [x: string]: any;
+}
+
+export interface InstagramUserData {
+  id: string;
+  username: string;
+  name: string;
+  description: string;
+  profileImageUrl?: string;
+  publicMetrics?: {
+    followers_count: number;
+    following_count: number;
+    post_count: number;
+  };
+  media: InstagramMedia[];
 }
 
 export interface TwitterStatus {

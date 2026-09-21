@@ -10,7 +10,7 @@ import { RSSKoaContext, RSSKoaState } from './types';
 import { createMemoryCache } from './modules/cache';
 import { RequestCollapsing } from './modules/requestCollapsing';
 import { WeiboData } from './modules/weibo/weibo';
-import { TwitterData } from './modules/twitter/twitter';
+import { InstagramData } from './modules/instagram/instagram';
 import { stopVisitorCookieRotation } from './modules/weibo/api/common';
 
 const koaApp = new Koa<RSSKoaState, RSSKoaContext>();
@@ -25,8 +25,8 @@ const initApp = () => {
   // weibo
   const weiboData = new WeiboData(cache, logger);
 
-  // twitter
-  const twitterData = new TwitterData(cache, logger);
+  // instagram
+  const instagramData = new InstagramData(cache, logger);
 
   // enable X-Forwarded-For
   koaApp.proxy = true;
@@ -55,7 +55,7 @@ const initApp = () => {
     .use(async (ctx, next) => {
       ctx.cache = cache;
       ctx.weibo = weiboData;
-      ctx.twitter = twitterData;
+      ctx.instagram = instagramData;
       ctx.requestCollapsing = requestCollapsing;
       await next();
     })

@@ -6,9 +6,21 @@ import NodeRSS from 'rss';
 import { RSSKoaContext, RSSKoaState } from '../types';
 import config from '../config';
 import { DomainNotFoundError, statusToHTML, UserNotFoundError } from './weibo/weibo';
-import { TwitterData, UserNotFoundError as TwitterUserNotFoundError, tweetToHTML } from './twitter/twitter';
+import { UserNotFoundError as InstagramUserNotFoundError, mediaToHTML } from './instagram/instagram';
 import { ThrottledError } from './throttler';
 import { logger } from './logger';
+import { cachedFeed, FeedCachePolicy } from './feedCache';
+
+// 各 RSS 输出的缓存策略
+const weiboFeedPolicy: FeedCachePolicy = {
+  xmlKeyPrefix: 'xml-',
+  xmlTTL: config.cacheTTL.rssXml,
+};
+const instagramFeedPolicy: FeedCachePolicy = {
+  xmlKeyPrefix: 'instagram-xml-',
+  // Instagram 优先保护出口 IP：XML 缓存拉长到 1 小时
+  xmlTTL: 1 * 60 * 60,
+};
 
 export class UidInvalidError extends Error {
   constructor(uid: string) {
@@ -34,9 +46,12 @@ export const registerRoutes = (
       }
 
       // get data
-      let cacheMiss = false;
-      const xmlData = await ctx.requestCollapsing.run(`rss:${uid}`, async () => {
-        return await ctx.cache.memo(async () => {
+      const { xmlData, cacheMiss } = await cachedFeed(
+        ctx.cache,
+        ctx.requestCollapsing,
+        weiboFeedPolicy,
+        uid,
+        async () => {
           const weiboData = await ctx.weibo.fetchUserLatestWeibo(uid);
           if (weiboData) {
             // basic info
@@ -58,11 +73,11 @@ export const registerRoutes = (
                 date: new Date(status.created_at),
               });
             });
-            cacheMiss = true;
             return feed.xml();
           }
-        }, `xml-${uid}`, config.cacheTTL.rssXml);
-      });
+          return undefined;
+        },
+      );
 
       // send data
       ctx.set('Content-Type', 'text/xml');
@@ -92,51 +107,55 @@ export const registerRoutes = (
     }
   });
 
-  router.get('/rss/twitter/:username', async (ctx) => {
+  router.get('/rss/instagram/:username', async (ctx) => {
     const username = ctx.params['username'];
     try {
-      if (!/^[a-zA-Z0-9_]{1,15}$/.test(username)) {
+      if (!/^[a-zA-Z0-9._]{1,30}$/.test(username)) {
         ctx.status = 404;
         ctx.body = `用户名格式有误。username: ${username}`;
         return;
       }
 
-      let cacheMiss = false;
-      const xmlData = await ctx.requestCollapsing.run(`twitter:${username}`, async () => {
-        return await ctx.cache.memo(async () => {
-          const twitterData = await ctx.twitter.fetchUserLatestTweets(username);
-          if (twitterData) {
+      const { xmlData, cacheMiss } = await cachedFeed(
+        ctx.cache,
+        ctx.requestCollapsing,
+        instagramFeedPolicy,
+        username,
+        async () => {
+          const instagramData = await ctx.instagram.fetchUserLatestPosts(username);
+          if (instagramData) {
             const feed = new NodeRSS({
-              site_url: `https://twitter.com/${username}`,
+              site_url: `https://www.instagram.com/${instagramData.username}/`,
               feed_url: '',
-              title: `${twitterData.name} (@${twitterData.username}) 的推文`,
-              description: twitterData.description,
+              title: `${instagramData.name} (@${instagramData.username}) 的 Instagram`,
+              description: instagramData.description,
               generator: 'https://github.com/zgq354/weibo-rss',
               ttl: config.rssTTL,
             });
-            twitterData.tweets?.forEach((tweet) => {
-              if (!tweet) return;
-              const title = tweet.text.replace(/<[^>]+>/g, '').replace(/[\n]/g, '').substr(0, 25);
+            instagramData.media?.forEach((media) => {
+              if (!media) return;
+              const summary = media.edge_media_to_caption?.edges?.[0]?.node?.text || '';
+              const title = summary.replace(/<[^>]+>/g, '').replace(/[\n]/g, '').substr(0, 25);
               feed.item({
                 title: title || null,
-                description: tweetToHTML(tweet),
-                url: `https://twitter.com/${username}/status/${tweet.id}`,
-                date: new Date(tweet.created_at),
+                description: mediaToHTML(media),
+                url: `https://www.instagram.com/p/${media.shortcode}/`,
+                date: new Date(media.taken_at_timestamp * 1000),
               });
             });
-            cacheMiss = true;
             return feed.xml();
           }
-        }, `twitter-xml-${username}`, config.cacheTTL.rssXml);
-      });
+          return undefined;
+        },
+      );
 
       ctx.set('Content-Type', 'text/xml');
       ctx.body = xmlData;
       ctx.state.hit = cacheMiss ? 0 : 1;
     } catch (error) {
-      if (error instanceof TwitterUserNotFoundError) {
+      if (error instanceof InstagramUserNotFoundError) {
         ctx.status = 404;
-        ctx.body = `找不到用户，可能用户名有误或用户不存在。username: ${username}`;
+        ctx.body = `找不到用户，可能用户名有误、用户不存在或为私密账号。username: ${username}`;
         return;
       }
       if (error instanceof ThrottledError) {

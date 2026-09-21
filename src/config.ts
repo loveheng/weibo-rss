@@ -32,11 +32,15 @@ const defaultConfig = {
     apiDomain: 7 * 24 * 60 * 60,
     apiTwitterUserInfo: 1 * 24 * 60 * 60,
     apiTwitterTweets: 15 * 60,
+    apiInstagramUserInfo: 15 * 60,
   },
   imageCache: 'https://image.baidu.com/search/down?url=',
   weiboCookie: process.env.WEIBO_COOKIE || '',
-  twitterBearerToken: process.env.TWITTER_BEARER_TOKEN || '',
-  twitterProxy: process.env.TWITTER_PROXY || 'http://192.168.1.40:2080',
+  weiboProxy: process.env.WEIBO_PROXY || '',
+  twitterCookie: process.env.TWITTER_COOKIE || '',
+  twitterProxy: process.env.TWITTER_PROXY || '',
+  instagramCookie: process.env.INSTAGRAM_COOKIE || '',
+  instagramProxy: process.env.INSTAGRAM_PROXY || '',
 };
 
 /**

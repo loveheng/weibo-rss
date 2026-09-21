@@ -1,6 +1,7 @@
 import config from "../../config";
 import { CacheInterface, LoggerInterface, WeiboStatus, WeiboUserData } from "../../types";
 import { logger } from "../logger";
+import { memoWithPolicy, CachePolicy } from "../feedCache";
 import { createDetailAPI, GetWeiboDetailFunc } from "./api/detailAPI";
 import { createDomainAPI, DomainNotFoundError, GetUIDByDomainFunc } from "./api/domainAPI";
 import { createIndexAPI, GetIndexUserInfoFunc, GetWeiboContentListFunc, UserNotFoundError } from "./api/indexAPI";
@@ -9,6 +10,23 @@ import { createLongTextAPI, GetWeiboLongTextFunc } from "./api/longTextAPI";
 export {
   DomainNotFoundError,
   UserNotFoundError,
+};
+
+// 微博源的缓存策略
+const weiboCachePolicy: CachePolicy = {
+  keyPrefix: "weibo-",
+  infoTTL: config.cacheTTL.apiIndexInfo,
+  listTTL: config.cacheTTL.apiStatusList,
+};
+
+// 微博源的长文/详情缓存策略（key 前缀沿用原 long-/dt- 约定）
+const weiboLongTextPolicy: CachePolicy = {
+  keyPrefix: "long-",
+  infoTTL: config.cacheTTL.apiLongText,
+};
+const weiboDetailPolicy: CachePolicy = {
+  keyPrefix: "dt-",
+  infoTTL: config.cacheTTL.apiDetail,
 };
 
 export class WeiboData {
@@ -41,14 +59,14 @@ export class WeiboData {
    * get user's weibo
    */
   fetchUserLatestWeibo = async (uid: string) => {
-    const indexInfo = await this.cache.memo(() => this.getIndexUserInfo(uid), `info-${uid}`, config.cacheTTL.apiIndexInfo);
+    const indexInfo = await memoWithPolicy(this.cache, weiboCachePolicy, "info", uid, () => this.getIndexUserInfo(uid));
     const { containerId } = indexInfo;
-    const statusList = await this.cache.memo(async () => {
+    const statusList = await memoWithPolicy(this.cache, weiboCachePolicy, "list", uid, async () => {
       const wbList = await this.getWeiboContentList(uid, containerId);
       return await Promise.all(
         wbList.map(status => this.fillStatusWithLongText(status))
       );
-    }, `list-${uid}`, config.cacheTTL.apiStatusList);
+    });
 
     return {
       ...indexInfo,
@@ -64,10 +82,12 @@ export class WeiboData {
     try {
       if (status.isLongText) {
         try {
-          const longTextContent = await this.cache.memo(
+          const longTextContent = await memoWithPolicy(
+            this.cache,
+            weiboLongTextPolicy,
+            "info",
+            status.id,
             () => this.getWeiboLongText(status.id),
-            `long-${status.id}`,
-            config.cacheTTL.apiLongText,
           );
           newStatus = {
             ...status,
@@ -76,10 +96,12 @@ export class WeiboData {
         } catch (error) {
           logger.error(error, `uid: ${status?.user?.id}, status: ${status.id}`);
           // fallback to detail
-          newStatus = await this.cache.memo(
+          newStatus = await memoWithPolicy(
+            this.cache,
+            weiboDetailPolicy,
+            "info",
+            status.id,
             () => this.getWeiboDetail(status.id),
-            `dt-${status.id}`,
-            config.cacheTTL.apiDetail,
           );
         }
       }

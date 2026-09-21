@@ -1,8 +1,10 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { Agent } from "https";
 import config from "../../../config";
+import { createRiskControl } from "../../antiCrawl";
+import { applyProxy } from "../../proxy";
 
-export const TIME_OUT = 3000*3;
+export const TIME_OUT = 3000 * 3;
 export const MOCK_UA =
   "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36";
 
@@ -65,47 +67,15 @@ export const stopVisitorCookieRotation = () => {
   }
 };
 
-export const handleForbiddenErr = (err: AxiosError, cb: () => Promise<void>) => {
-  if (err.response && [418, 403].includes(err.response.status)) {
-    return cb();
-  } else {
-    return Promise.reject(err);
-  }
-};
+// 微博源特有的风控钩子：仅 403/418 视为风控
+export const riskControl = createRiskControl({
+  riskyStatuses: [403, 418],
+});
 
-export const waitMs = (ms: number) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-};
-
-export const requestWithRetry = async <T>(
-  requestor: () => Promise<AxiosResponse<T>>,
-  retries = 2,
-  baseDelay = 1000,
-): Promise<AxiosResponse<T>> => {
-  let attempt = 0;
-  let lastError: AxiosError | Error | null = null;
-
-  while (attempt <= retries) {
-    try {
-      return await requestor();
-    } catch (err) {
-      lastError = err as AxiosError | Error;
-      const status = (err as AxiosError).response?.status;
-      if (status && [403, 418].includes(status)) {
-        break;
-      }
-      if (attempt < retries) {
-        const delay = baseDelay * Math.pow(2, attempt) + Math.floor(Math.random() * 300);
-        await waitMs(delay);
-      }
-      attempt += 1;
-    }
-  }
-
-  return Promise.reject(lastError);
-};
+// 绑定源特有配置的防风控方法，保持原有 import 路径兼容
+export const requestWithRetry = riskControl.requestWithRetry;
+export const handleForbiddenErr = riskControl.handleForbiddenErr;
+export { waitMs } from "../../antiCrawl";
 
 export const buildAxiosConfig = (overrides?: AxiosRequestConfig): AxiosRequestConfig => {
   return {
@@ -117,10 +87,12 @@ export const buildAxiosConfig = (overrides?: AxiosRequestConfig): AxiosRequestCo
 
 export const createWeiboInstance = () => {
   const httpsAgent = new Agent({ keepAlive: true });
-  const instance = axios.create({
-    ...buildAxiosConfig(),
-    httpsAgent,
-  });
+  const instance = axios.create(
+    applyProxy({
+      ...buildAxiosConfig(),
+      httpsAgent,
+    }, config.weiboProxy),
+  );
   startVisitorCookieRotation(instance);
   return instance;
 };
