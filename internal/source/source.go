@@ -11,8 +11,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/feed"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/feed"
 )
 
 // 通用错误，web 层据此映射 HTTP 状态码；各源应使用 %w 包装返回。

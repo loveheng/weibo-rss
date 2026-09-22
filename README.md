@@ -8,7 +8,7 @@
 1. 克制：严格限制程序对微博的并发请求，不产生额外压力
 2. 省资源：基于 Go 实现，单二进制 + 纯内存缓存，常驻内存 ~15MB，镜像 ~7MB
 3. 高可用：支持个人账号 Cookie 兜底与访客 Cookie 自动轮换，提升抗封禁能力
-4. 多源：内置微博与 Instagram 订阅支持
+4. 多源：内置微博、Instagram 与东方财富股吧订阅支持
 5. 纯 API：无前端页面，仅提供 RSS 订阅与辅助接口
 
 ## 手动部署
@@ -17,7 +17,7 @@
 
 安装并运行：
 ```
-git clone https://github.com/zgq354/weibo-rss.git
+git clone https://github.com/loveheng/weibo-rss.git
 cd weibo-rss
 go run ./cmd/server
 ```
@@ -36,6 +36,8 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o weibo-rss ./cmd/server
 - `WEIBO_PROXY`：微博上游代理，如 `http://user:pass@host:port`
 - `INSTAGRAM_COOKIE`：Instagram 账号 Cookie
 - `INSTAGRAM_PROXY`：Instagram 上游代理
+- `EASTMONEY_COOKIE`：东方财富 Cookie，可选兜底（公开接口默认无需 Cookie）
+- `EASTMONEY_PROXY`：东方财富上游代理
 - `IMAGE_CACHE`：图片反代前缀，默认百度图片反代
 
 ## Docker 部署
@@ -56,8 +58,12 @@ docker compose up -d
 | --- | --- |
 | `GET /rss/user/:uid` | 微博用户 RSS（uid 为 10 位数字） |
 | `GET /rss/instagram/:username` | Instagram 用户 RSS |
+| `GET /rss/eastmoney/post/:uid` | 东方财富股吧博主发帖 RSS |
+| `GET /rss/eastmoney/reply/:uid` | 东方财富股吧博主回复 RSS |
 | `GET /api/domain2uid?domain=xxx` | 微博自定义域名转 uid |
 | `GET /admin/cache-stats` | 缓存统计 |
+
+各订阅源的详细说明（标识格式、缓存策略、常见错误）见 [docs/sources.md](docs/sources.md)。
 
 ## 项目结构
 
@@ -69,7 +75,8 @@ docker compose up -d
 │   ├── feed/            # RSS Channel/XML 组装
 │   ├── source/          # 订阅源抽象（source.Feed 接口）
 │   │   ├── weibo/       # 微博源
-│   │   └── instagram/   # Instagram 源
+│   │   ├── instagram/   # Instagram 源
+│   │   └── eastmoney/   # 东方财富股吧源（发帖 + 回复）
 │   ├── upstream/        # 抓取基础设施：客户端(代理/UA/Cookie)、限流熔断、防风控重试
 │   └── web/             # HTTP 路由与中间件（与具体源解耦）
 └── docker/Dockerfile    # 多阶段构建，scratch 极简镜像

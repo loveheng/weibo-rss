@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zgq354/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/config"
 )
 
 // 用带噪音的真实结构样本锁定解析行为：

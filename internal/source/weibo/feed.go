@@ -12,10 +12,10 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/feed"
-	"github.com/zgq354/weibo-rss/internal/upstream"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/feed"
+	"github.com/loveheng/weibo-rss/internal/upstream"
 )
 
 var (

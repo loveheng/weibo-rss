@@ -13,3 +13,7 @@ services:
       # WEIBO_COOKIE: ""
       # 可选：微博上游代理
       # WEIBO_PROXY: "http://user:pass@host:port"
+      # 可选：东方财富 Cookie 兜底（公开接口默认无需 Cookie）
+      # EASTMONEY_COOKIE: ""
+      # 可选：东方财富上游代理
+      # EASTMONEY_PROXY: "http://user:pass@host:port"

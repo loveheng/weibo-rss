@@ -1,4 +1,4 @@
-module github.com/zgq354/weibo-rss
+module github.com/loveheng/weibo-rss
 
 go 1.22
 

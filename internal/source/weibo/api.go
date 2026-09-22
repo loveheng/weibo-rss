@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/zgq354/weibo-rss/internal/source"
+	"github.com/loveheng/weibo-rss/internal/source"
 )
 
 // ErrDomainNotFound 表示自定义域名无法转换为 uid。

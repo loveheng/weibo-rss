@@ -30,6 +30,8 @@ type Config struct {
 	WeiboProxy      string // WEIBO_PROXY，上游代理 URL
 	InstagramCookie string // INSTAGRAM_COOKIE
 	InstagramProxy  string // INSTAGRAM_PROXY
+	EastmoneyCookie string // EASTMONEY_COOKIE，可选兜底
+	EastmoneyProxy  string // EASTMONEY_PROXY，上游代理 URL
 }
 
 // Load 从环境变量读取配置。
@@ -49,6 +51,12 @@ func Load() Config {
 	}
 	if v := os.Getenv("INSTAGRAM_PROXY"); v != "" {
 		cfg.InstagramProxy = v
+	}
+	if v := os.Getenv("EASTMONEY_COOKIE"); v != "" {
+		cfg.EastmoneyCookie = v
+	}
+	if v := os.Getenv("EASTMONEY_PROXY"); v != "" {
+		cfg.EastmoneyProxy = v
 	}
 	return cfg
 }

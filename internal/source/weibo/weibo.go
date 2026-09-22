@@ -13,9 +13,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/upstream"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/upstream"
 )
 
 // 微博源各层缓存策略（key 前缀沿用原 long-/dt- 约定）。

@@ -14,12 +14,13 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/source"
-	"github.com/zgq354/weibo-rss/internal/source/instagram"
-	"github.com/zgq354/weibo-rss/internal/source/weibo"
-	"github.com/zgq354/weibo-rss/internal/web"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/source"
+	"github.com/loveheng/weibo-rss/internal/source/eastmoney"
+	"github.com/loveheng/weibo-rss/internal/source/instagram"
+	"github.com/loveheng/weibo-rss/internal/source/weibo"
+	"github.com/loveheng/weibo-rss/internal/web"
 )
 
 func main() {
@@ -32,6 +33,7 @@ func main() {
 	// 数据源
 	weiboSvc := weibo.NewService(cfg, memCache, log)
 	instagramSvc := instagram.NewService(cfg, memCache, log)
+	eastmoneySvc := eastmoney.NewService(cfg, memCache, log)
 
 	// 生命周期：Cookie 轮换与统计随 ctx 退出
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -42,7 +44,7 @@ func main() {
 	handler := web.NewHandler(web.Deps{
 		Cache:    memCache,
 		Collapse: &singleflight.Group{},
-		Sources:  []source.Feed{weiboSvc, instagramSvc},
+		Sources:  []source.Feed{weiboSvc, instagramSvc, eastmoneySvc, eastmoneySvc.ReplyFeed()},
 		Log:      log,
 	})
 

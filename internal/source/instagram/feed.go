@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/feed"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/feed"
 )
 
 var (

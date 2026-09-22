@@ -13,7 +13,7 @@
 - `Fetch` 返回 `feed.Channel`（频道信息 + 条目），不感知 XML 细节。
 - 需要额外接口时实现 `source.ExtraRoutes`（参考微博 `RegisterExtra` 的 domain2uid）。
 - 错误约定（web 层统一映射）：`source.ErrNotFound` → 404（文案走 `NotFoundMessage`）；
-  `throttler.ErrThrottled` / `anticrawl.ErrRisky` → 503；其余 → 500 并记日志。
+  `upstream.ErrThrottled` / `upstream.ErrRisky` → 503；其余 → 500 并记日志。
 - 标识校验（`Validate`）返回的错误文本直接作为 404 响应体，不包装哨兵错误。
 
 ## 上游请求写法（upstream.Fetcher）
@@ -56,11 +56,8 @@
 - 上游解析类测试用带噪音的真实 JSON 样本锁定行为（参考 weibo `parse_test.go`）。
 - 并发/时序类用短时延验证（参考 throttler_test 的串行与熔断用例）。
 
-## 新增 RSS 源步骤速查
-1. `internal/source/<name>/`：`upstream.NewClient`（源专属 BaseHeaders/Cookie/Proxy env）+
-   `upstream.NewFetcher`（声明 `Hooks.RiskyStatuses`）。
-2. API 函数：`fetcher.JSON` + 精简 struct 解析；用户不存在包装 `source.ErrNotFound`。
-3. 实现 `source.Feed` 六方法；需要额外接口再实现 `source.ExtraRoutes`。
-4. `internal/config` 加 Cookie/Proxy env 字段与 TTL 常量。
-5. `cmd/server/main.go` 的 `Deps.Sources` 注册一行，路由/缓存/合并/错误映射自动生效。
-6. 补包内 `_test.go`（解析与校验优先）。
+## 新增 RSS 源
+细节约定统一由 **weibo-rss-source-dev** skill 维护（包分层、接线模板、Feed 清单、
+错误纪律、config/main/docker-compose/README 联动清单与合规反模式），此处不重复。
+本 skill 仍适用于其通用写法约束：分层依赖、upstream/Fetcher 写法、缓存/限流约定、
+图片反代、测试约定。

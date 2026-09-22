@@ -17,10 +17,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/source"
-	"github.com/zgq354/weibo-rss/internal/upstream"
+	"github.com/loveheng/weibo-rss/internal/cache"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/source"
+	"github.com/loveheng/weibo-rss/internal/upstream"
 )
 
 // IGAppID 为 Instagram web api 的公共 app id。

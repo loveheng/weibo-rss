@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zgq354/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/config"
 )
 
 // weiboTimeLayout 为微博 created_at 的时间格式。

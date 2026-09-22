@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/upstream"
+	"github.com/loveheng/weibo-rss/internal/config"
+	"github.com/loveheng/weibo-rss/internal/upstream"
 )
 
 // Client 为微博上游客户端：组合公共 HTTP 客户端并管理访客 Cookie 轮换。
