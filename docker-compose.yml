@@ -1,9 +1,15 @@
-version: '2'
 
 services:
   weibo-rss:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     container_name: docker-weibo-rss
     restart: always
     ports:
       - "3000:3000"
+    environment:
+      # 可选：个人账号 Cookie，提升抗封禁能力
+      # WEIBO_COOKIE: ""
+      # 可选：微博上游代理
+      # WEIBO_PROXY: "http://user:pass@host:port"

@@ -4,57 +4,78 @@
 
 让你不再错过喜欢的博主的动态更新，即使身处纷繁复杂中。
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
-
 ## 特点
 1. 简单：主页链接一键转换 RSS 订阅源地址
 2. 克制：严格限制程序对微博的并发请求，不产生额外压力
-3. 省资源：基于 Node.js 实现，采用 LRU 内存缓存，内存占用低（60MB 左右）
-4. 高可用：支持个人账号 Cookie 兜底，提升抗封禁能力
+3. 省资源：基于 Go 实现，单二进制 + 纯内存缓存，常驻内存 ~15MB，镜像 ~7MB
+4. 高可用：支持个人账号 Cookie 兜底与访客 Cookie 自动轮换，提升抗封禁能力
+5. 多源：内置微博与 Instagram 订阅支持
 
 ## 手动部署
 
-依赖：`Node.js 20/22 LTS` 和 `npm`
+依赖：`Go 1.22+`
 
-安装：
+安装并运行：
 ```
 git clone https://github.com/zgq354/weibo-rss.git
 cd weibo-rss
-npm install && npm run build
+go run ./cmd/server
 ```
 
-启动：
+或编译为单二进制部署（静态资源已嵌入，无运行时依赖）：
 ```
-npm start
-```
-
-或使用 PM2 管理进程：
-```
-npm install pm2 -g
-pm2 start dist/app.js --name weibo-rss
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o weibo-rss ./cmd/server
+./weibo-rss
 ```
 
-程序将启动一个 HTTP Server，默认监听 `3000` 端口
-还需另外配置域名、HTTP 反向代理等
+程序将启动一个 HTTP Server，默认监听 `3000` 端口，还需另外配置域名、HTTP 反向代理等。
 
 ### 环境变量
 - `PORT`：服务端口，默认 `3000`
 - `WEIBO_COOKIE`：个人账号 Cookie，可显著提升抗封禁与抓取稳定性
+- `WEIBO_PROXY`：微博上游代理，如 `http://user:pass@host:port`
+- `INSTAGRAM_COOKIE`：Instagram 账号 Cookie
+- `INSTAGRAM_PROXY`：Instagram 上游代理
+- `IMAGE_CACHE`：图片反代前缀，默认百度图片反代
 
 ## Docker 部署
 
 ```
-docker build -t weibo-rss .
+docker build -f docker/Dockerfile -t weibo-rss .
 docker run --rm -p 3000:3000 weibo-rss
 ```
 
-## ToDo
-1. 更多的接口单元测试
+或使用 docker-compose：
+```
+docker compose up -d
+```
 
-## 贡献者们
-<a href="https://github.com/zgq354/weibo-rss/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=zgq354/weibo-rss" />
-</a>
+## 接口
+
+| 路径 | 说明 |
+| --- | --- |
+| `GET /rss/user/:uid` | 微博用户 RSS（uid 为 10 位数字） |
+| `GET /rss/instagram/:username` | Instagram 用户 RSS |
+| `GET /api/domain2uid?domain=xxx` | 微博自定义域名转 uid |
+| `GET /admin/cache-stats` | 缓存统计 |
+| `GET /` | 首页（链接一键转换工具） |
+
+## 项目结构
+
+```
+├── cmd/server/          # 程序入口
+├── internal/
+│   ├── anticrawl/       # 防风控：重试退避 + 风控钩子链
+│   ├── cache/           # LRU + TTL 缓存与缓存策略层
+│   ├── config/          # 配置与缓存 TTL
+│   ├── feed/            # RSS XML 组装
+│   ├── source/weibo/    # 微博源：客户端/接口/编排/渲染
+│   ├── source/instagram/# Instagram 源
+│   ├── throttler/       # 串行限流 + 熔断冷却
+│   └── web/             # HTTP 路由与中间件
+├── public/              # 前端静态资源（go:embed 嵌入）
+└── docker/Dockerfile    # 多阶段构建，scratch 极简镜像
+```
 
 ## 相关项目
 

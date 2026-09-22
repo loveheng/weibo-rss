@@ -1,2 +1,11 @@
+.git
+.github
+.agents
+context
+docs
+data
 node_modules
-data/rss-data
+dist
+*.log
+*.md
+docker

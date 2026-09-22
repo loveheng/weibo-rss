@@ -1,25 +1,22 @@
-# 依赖包 (Dependencies)
-/node_modules/
+# Go 构建产物
+/weibo-rss
+*.exe
+*.test
+*.out
+coverage.*
 
-# 构建产物 (Build Output)
-/dist/
-/out/
-yarn-error.log
-npm-debug.log*
+# 运行时/本地数据
+/data/
+*.log
 
-# 运行时/本地数据 (Local Data)
-/data/*
-!/data/.gitkeep
-
-# 配置文件与环境变量 (Configs & Environment)
-/config.js
+# 配置文件与环境变量
 .env*.local
 
-# 系统与编辑器杂项 (System & IDEs)
+# 系统与编辑器杂项
 .DS_Store
 Thumbs.db
 
-# JetBrains IDE (WebStorm / CLion 等)
+# JetBrains IDE
 .idea/
 
 # VS Code
