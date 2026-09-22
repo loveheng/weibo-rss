@@ -1,10 +1,11 @@
-// Package throttler 实现「串行队列 + 熔断冷却」限流器。
+package upstream
+
+// 本文件实现「串行队列 + 熔断冷却」限流器。
 //
 // 设计机制移植自 TS 版 Throttler：
 //   - concurrency = 1：同一时刻只允许一个上游请求在飞（克制原则）；
 //   - 熔断：上游命中风控后调用 Trip()，冷却期内所有请求直接失败；
 //   - 冷却恢复：按时间戳比较判断恢复（而非定时器重置），多次熔断不会堆叠定时器。
-package throttler
 
 import (
 	"context"
@@ -15,7 +16,7 @@ import (
 )
 
 // ErrThrottled 表示当前处于熔断冷却期，请求被拒绝。
-var ErrThrottled = errors.New("throttler: circuit broken")
+var ErrThrottled = errors.New("upstream: circuit broken")
 
 // DefaultCooldown 为默认熔断冷却时长。
 const DefaultCooldown = 10 * time.Minute

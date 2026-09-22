@@ -1,4 +1,4 @@
-package throttler
+package upstream
 
 import (
 	"context"

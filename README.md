@@ -64,16 +64,13 @@ docker compose up -d
 ```
 ├── cmd/server/          # 程序入口
 ├── internal/
-│   ├── anticrawl/       # 防风控：重试退避 + 风控钩子链 + 抖动
 │   ├── cache/           # LRU + TTL 缓存与缓存策略层
 │   ├── config/          # 配置与缓存 TTL
 │   ├── feed/            # RSS Channel/XML 组装
-│   ├── httputil/        # HTTP 响应写出工具
 │   ├── source/          # 订阅源抽象（source.Feed 接口）
 │   │   ├── weibo/       # 微博源
 │   │   └── instagram/   # Instagram 源
-│   ├── throttler/       # 串行限流 + 熔断冷却
-│   ├── upstream/        # 公共上游客户端：代理/UA/Cookie + 限流重试骨架
+│   ├── upstream/        # 抓取基础设施：客户端(代理/UA/Cookie)、限流熔断、防风控重试
 │   └── web/             # HTTP 路由与中间件（与具体源解耦）
 └── docker/Dockerfile    # 多阶段构建，scratch 极简镜像
 ```
@@ -85,7 +82,7 @@ docker compose up -d
 1. 在 `internal/source/<name>/` 实现满足 `internal/source.Feed` 接口的服务：
    - `Name` / `Route`（路由模板，如 `/rss/<name>/{id}`）/ `Policy`（XML 缓存策略）
    - `Validate`（标识格式校验）/ `Fetch`（拉取并拼装 `feed.Channel`）/ `NotFoundMessage`
-   - 复用现成基础设施：`cache.SourcePolicy`（数据缓存）、`throttler.Throttler`（串行限流熔断）、`anticrawl`（风控重试钩子）
+   - 复用现成基础设施：`cache.SourcePolicy`（数据缓存）、`upstream.Throttler`（串行限流熔断）、`upstream.Hooks`（风控重试钩子）
 2. 如需 RSS 之外的接口（如微博的 domain2uid），实现可选的 `source.ExtraRoutes`。
 3. 在 `cmd/server/main.go` 的 `Deps.Sources` 中注册即可，路由/缓存/请求合并/错误映射自动生效。
 

@@ -36,7 +36,7 @@ type Feed interface {
 	// 错误文本将直接作为 404 响应体返回给用户。
 	Validate(id string) error
 	// Fetch 拉取数据并组装频道；错误应包装 ErrNotFound（→404），
-	// 或透传 throttler.ErrThrottled / anticrawl.ErrRisky（→503）。
+	// 或透传 upstream.ErrThrottled / upstream.ErrRisky（→503）。
 	Fetch(ctx context.Context, id string) (*feed.Channel, error)
 	// NotFoundMessage 返回目标不存在时的用户文案（404 响应体）。
 	NotFoundMessage(id string) string

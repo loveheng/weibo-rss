@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/upstream"
 )
@@ -28,7 +27,7 @@ type Client struct {
 	cfg           config.Config
 	mu            sync.Mutex
 	visitorCookie string
-	riskyHook     *anticrawl.Hooks
+	riskyHook     *upstream.Hooks
 }
 
 // NewClient 创建客户端；配置了 WEIBO_PROXY 时走出站代理。
@@ -51,11 +50,11 @@ func NewClient(cfg config.Config, log *slog.Logger) *Client {
 func (c *Client) Up() *upstream.Client { return c.up }
 
 // Hooks 返回微博源的风控钩子：403/418 视为风控，命中后先刷新访客 Cookie。
-func (c *Client) Hooks() *anticrawl.Hooks {
+func (c *Client) Hooks() *upstream.Hooks {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.riskyHook == nil {
-		c.riskyHook = &anticrawl.Hooks{
+		c.riskyHook = &upstream.Hooks{
 			RiskyStatuses:  []int{403, 418},
 			OnRiskDetected: c.RefreshVisitorCookie,
 		}

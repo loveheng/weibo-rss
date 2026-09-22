@@ -17,11 +17,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/source"
-	"github.com/zgq354/weibo-rss/internal/throttler"
 	"github.com/zgq354/weibo-rss/internal/upstream"
 )
 
@@ -94,7 +92,7 @@ type Service struct {
 	cfg     config.Config
 	cache   *cache.Cache
 	log     *slog.Logger
-	runner  *throttler.Throttler
+	runner  *upstream.Throttler
 	fetcher *upstream.Fetcher
 }
 
@@ -103,7 +101,7 @@ func NewService(cfg config.Config, c *cache.Cache, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
-	hooks := &anticrawl.Hooks{RiskyStatuses: []int{401, 403, 429}}
+	hooks := &upstream.Hooks{RiskyStatuses: []int{401, 403, 429}}
 	client := upstream.NewClient(upstream.Options{
 		ProxyURL:  cfg.InstagramProxy,
 		UserAgent: upstream.MobileUA,
@@ -118,7 +116,7 @@ func NewService(cfg config.Config, c *cache.Cache, log *slog.Logger) *Service {
 		cfg:     cfg,
 		cache:   c,
 		log:     log,
-		runner:  throttler.New("instagram-web", log, 30*time.Minute),
+		runner:  upstream.New("instagram-web", log, 30*time.Minute),
 		fetcher: upstream.NewFetcher(client, hooks),
 	}
 }

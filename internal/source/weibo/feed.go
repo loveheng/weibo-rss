@@ -6,6 +6,7 @@ package weibo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,8 +15,7 @@ import (
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/feed"
-	"github.com/zgq354/weibo-rss/internal/httputil"
-	"github.com/zgq354/weibo-rss/internal/throttler"
+	"github.com/zgq354/weibo-rss/internal/upstream"
 )
 
 var (
@@ -97,7 +97,7 @@ func (s *Service) handleDomain2UID(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, ErrDomainNotFound):
 			writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "msg": "找不到用户，可能是地址格式不正确"})
-		case errors.Is(err, throttler.ErrThrottled):
+		case errors.Is(err, upstream.ErrThrottled):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"success": false, "msg": "暂时无法拉取到数据，请稍后再试"})
 		default:
 			s.log.Error("domain2uid failed", "domain", domain, "err", err)
@@ -110,5 +110,7 @@ func (s *Service) handleDomain2UID(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
-	httputil.WriteJSON(w, status, body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
 }

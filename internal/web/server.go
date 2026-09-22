@@ -8,6 +8,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -15,12 +16,10 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/feed"
-	"github.com/zgq354/weibo-rss/internal/httputil"
 	"github.com/zgq354/weibo-rss/internal/source"
-	"github.com/zgq354/weibo-rss/internal/throttler"
+	"github.com/zgq354/weibo-rss/internal/upstream"
 )
 
 // Deps 为路由层依赖。
@@ -92,7 +91,7 @@ func (d *Deps) handleFeedError(w http.ResponseWriter, s source.Feed, id string, 
 	switch {
 	case errors.Is(err, source.ErrNotFound):
 		http.Error(w, s.NotFoundMessage(id), http.StatusNotFound)
-	case errors.Is(err, throttler.ErrThrottled), errors.Is(err, anticrawl.ErrRisky):
+	case errors.Is(err, upstream.ErrThrottled), errors.Is(err, upstream.ErrRisky):
 		http.Error(w, "暂时无法拉取到数据，请稍后再试。", http.StatusServiceUnavailable)
 	default:
 		d.Log.Error("feed error", "source", s.Name(), "id", id, "err", err)
@@ -154,11 +153,14 @@ func (r *recorder) WriteHeader(code int) {
 }
 
 func writeXML(w http.ResponseWriter, xml string) {
-	httputil.WriteXML(w, xml)
+	w.Header().Set("Content-Type", "text/xml")
+	_, _ = w.Write([]byte(xml))
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
-	httputil.WriteJSON(w, status, body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(body)
 }
 
 func boolToInt(b bool) int {

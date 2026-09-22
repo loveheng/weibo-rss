@@ -1,21 +1,19 @@
-// Package upstream 提供面向「受限上游 API」的公共 HTTP 客户端，
+// Package upstream 提供面向「受限上游 API」的公共抓取基础设施，
 // 供各订阅源复用，避免每个源重复实现：
-//   - 出站代理、超时、移动端 UA 与基础头部、可插拔 Cookie 提供器；
-//   - Fetcher 将 throttler（串行熔断）与 anticrawl（重试/风控钩子）
-//     组合成通用请求骨架（Do / JSON）。
+//   - client.go：出站代理、超时、移动端 UA 与基础头部、可插拔 Cookie 提供器；
+//   - fetcher.go：将 throttler（串行熔断）与 anticrawl（重试/风控钩子）
+//     组合成通用请求骨架（Do / JSON）；
+//   - anticrawl.go：请求重试、风控响应识别与命中后的钩子/熔断回调链；
+//   - throttler.go：串行队列 + 熔断冷却限流器。
 package upstream
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/zgq354/weibo-rss/internal/anticrawl"
-	"github.com/zgq354/weibo-rss/internal/throttler"
 )
 
 // MobileUA 为默认的移动端 UA。
@@ -95,49 +93,4 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body io.Reader, 
 		req.Header.Set(k, v)
 	}
 	return c.http.Do(req)
-}
-
-// Fetcher 组合 Client 与风控钩子，提供「限流 + 抖动 + 重试 + 风控处理」
-// 的通用请求骨架。
-type Fetcher struct {
-	Client    *Client
-	Hooks     *anticrawl.Hooks
-	Retries   int
-	BaseDelay time.Duration
-}
-
-// NewFetcher 创建 Fetcher，填充重试参数默认值（2 次、1s 基准退避）。
-func NewFetcher(client *Client, hooks *anticrawl.Hooks) *Fetcher {
-	return &Fetcher{Client: client, Hooks: hooks, Retries: 2, BaseDelay: time.Second}
-}
-
-// Do 在限流器内执行带抖动、重试与风控处理的请求：
-//   - 冷却期内或风控熔断时返回 throttler.ErrThrottled / anticrawl.ErrRisky；
-//   - 成功时返回未读取的响应体（调用方负责关闭）。
-func (f *Fetcher) Do(ctx context.Context, runner *throttler.Throttler, method, rawURL string, headers map[string]string) (*http.Response, error) {
-	var resp *http.Response
-	err := runner.Run(ctx, func() error {
-		if err := anticrawl.Jitter(ctx, 100*time.Millisecond); err != nil {
-			return err
-		}
-		r, err := anticrawl.DoWithRetry(ctx, f.Hooks, func(ctx context.Context) (*http.Response, error) {
-			return f.Client.Do(ctx, method, rawURL, nil, headers)
-		}, f.Retries, f.BaseDelay)
-		if err != nil {
-			return anticrawl.HandleForbidden(ctx, f.Hooks, err, runner.Trip)
-		}
-		resp = r
-		return nil
-	})
-	return resp, err
-}
-
-// JSON 同 Do，并将响应体解码进 out（随后关闭响应体）。
-func (f *Fetcher) JSON(ctx context.Context, runner *throttler.Throttler, method, rawURL string, headers map[string]string, out any) error {
-	resp, err := f.Do(ctx, runner, method, rawURL, headers)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	return json.NewDecoder(resp.Body).Decode(out)
 }

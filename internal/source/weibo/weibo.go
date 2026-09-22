@@ -13,10 +13,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
-	"github.com/zgq354/weibo-rss/internal/throttler"
 	"github.com/zgq354/weibo-rss/internal/upstream"
 )
 
@@ -64,14 +62,14 @@ type Service struct {
 	cache   *cache.Cache
 	client  *Client
 	fetcher *upstream.Fetcher
-	hooks   *anticrawl.Hooks
+	hooks   *upstream.Hooks
 	log     *slog.Logger
 	sf      *singleflight.Group
 
-	indexRunner    *throttler.Throttler
-	detailRunner   *throttler.Throttler
-	longTextRunner *throttler.Throttler
-	domainRunner   *throttler.Throttler
+	indexRunner    *upstream.Throttler
+	detailRunner   *upstream.Throttler
+	longTextRunner *upstream.Throttler
+	domainRunner   *upstream.Throttler
 }
 
 // NewService 创建微博数据源服务。
@@ -87,10 +85,10 @@ func NewService(cfg config.Config, c *cache.Cache, log *slog.Logger) *Service {
 		hooks:          client.Hooks(),
 		log:            log,
 		sf:             &singleflight.Group{},
-		indexRunner:    throttler.New("weibo-index", log, throttler.DefaultCooldown),
-		detailRunner:   throttler.New("weibo-detail", log, throttler.DefaultCooldown),
-		longTextRunner: throttler.New("weibo-longText", log, throttler.DefaultCooldown),
-		domainRunner:   throttler.New("weibo-domain", log, throttler.DefaultCooldown),
+		indexRunner:    upstream.New("weibo-index", log, upstream.DefaultCooldown),
+		detailRunner:   upstream.New("weibo-detail", log, upstream.DefaultCooldown),
+		longTextRunner: upstream.New("weibo-longText", log, upstream.DefaultCooldown),
+		domainRunner:   upstream.New("weibo-domain", log, upstream.DefaultCooldown),
 	}
 	s.fetcher = upstream.NewFetcher(client.Up(), s.hooks)
 	return s

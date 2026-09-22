@@ -1,8 +1,9 @@
-// Package anticrawl 实现公共防风控机制，设计移植自 TS 版 antiCrawl.ts：
+package upstream
+
+// 本文件实现公共防风控机制，设计移植自 TS 版 antiCrawl.ts：
 //   - 请求重试（指数退避 + 随机抖动）；
 //   - 风控响应识别（可按源覆盖，如微博 403/418、Instagram 401/403/429）；
 //   - 命中风控后的回调链：先执行源特有钩子（如刷新访客 Cookie），再熔断。
-package anticrawl
 
 import (
 	"context"
@@ -101,7 +102,7 @@ func HandleForbidden(ctx context.Context, h *Hooks, err error, trip func()) erro
 }
 
 // ErrRisky 在钩子与熔断均执行完毕后返回，调用方可据此映射为 503。
-var ErrRisky = errors.New("anticrawl: risky status detected")
+var ErrRisky = errors.New("upstream: risky status detected")
 
 func sleep(ctx context.Context, d time.Duration) error {
 	t := time.NewTimer(d)
