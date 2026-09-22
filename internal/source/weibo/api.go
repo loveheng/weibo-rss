@@ -16,10 +16,8 @@ import (
 	"time"
 
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
+	"github.com/zgq354/weibo-rss/internal/source"
 )
-
-// ErrUserNotFound 表示用户不存在或仅登录可见。
-var ErrUserNotFound = errors.New("weibo: user not found")
 
 // ErrDomainNotFound 表示自定义域名无法转换为 uid。
 var ErrDomainNotFound = errors.New("weibo: domain not found")
@@ -89,7 +87,7 @@ func (s *Service) getIndexUserInfo(ctx context.Context, uid string) (userInfo, e
 			return err
 		}
 		if r.OK != 1 || len(r.Data.TabsInfo.Tabs) < 2 {
-			return fmt.Errorf("%w: uid %s", ErrUserNotFound, uid)
+			return fmt.Errorf("%w: uid %s", source.ErrNotFound, uid)
 		}
 		out = userInfo{
 			ScreenName:  r.Data.UserInfo.ScreenName,

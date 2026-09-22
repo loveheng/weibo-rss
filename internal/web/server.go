@@ -1,4 +1,9 @@
-// Package web 提供 HTTP 路由与请求处理，对应 TS 版 routes.ts。
+// Package web 提供 HTTP 路由与请求处理。
+//
+// 路由层与具体订阅源解耦：
+//   - 每个 source.Feed 的 RSS 路由由 registerFeed 通用逻辑注册；
+//   - 源特有接口通过 source.ExtraRoutes 可选扩展（如微博的 domain2uid）；
+//   - XML 缓存、请求合并、错误到 HTTP 状态码的映射均为统一实现。
 package web
 
 import (
@@ -7,40 +12,23 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"time"
 
 	"golang.org/x/sync/singleflight"
 
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
-	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/feed"
-	"github.com/zgq354/weibo-rss/internal/source/instagram"
-	"github.com/zgq354/weibo-rss/internal/source/weibo"
+	"github.com/zgq354/weibo-rss/internal/source"
 	"github.com/zgq354/weibo-rss/internal/throttler"
-)
-
-// 各 RSS 输出的 XML 缓存策略（Instagram 拉长到 1 小时保护出口 IP）。
-var (
-	weiboFeedPolicy     = cache.FeedPolicy{XMLKeyPrefix: "xml-", XMLTTL: config.RSSXMLTTL, Collapse: true}
-	instagramFeedPolicy = cache.FeedPolicy{XMLKeyPrefix: "instagram-xml-", XMLTTL: config.InstagramTTL, Collapse: true}
-)
-
-var (
-	uidRe      = regexp.MustCompile(`^[0-9]{10}$`)
-	usernameRe = regexp.MustCompile(`^[a-zA-Z0-9._]{1,30}$`)
-	domainRe   = regexp.MustCompile(`^[A-Za-z0-9]{3,20}$`)
 )
 
 // Deps 为路由层依赖。
 type Deps struct {
-	Cache     *cache.Cache
-	Collapse  *singleflight.Group
-	Weibo     *weibo.Service
-	Instagram *instagram.Service
-	Cfg       config.Config
-	Log       *slog.Logger
+	Cache    *cache.Cache
+	Collapse *singleflight.Group
+	Sources  []source.Feed
+	Log      *slog.Logger
 }
 
 // reqState 记录单次请求的缓存命中情况（用于访问日志）。
@@ -50,7 +38,7 @@ type reqState struct {
 
 type ctxKey struct{}
 
-// NewHandler 组装全部路由（Go 1.22 ServeMux 方法匹配）。
+// NewHandler 组装全部路由。
 func NewHandler(d Deps) http.Handler {
 	if d.Log == nil {
 		d.Log = slog.Default()
@@ -60,124 +48,56 @@ func NewHandler(d Deps) http.Handler {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /rss/user/{id}", d.handleWeiboFeed)
-	mux.HandleFunc("GET /rss/instagram/{username}", d.handleInstagramFeed)
-	mux.HandleFunc("GET /api/domain2uid", d.handleDomain2UID)
 	mux.HandleFunc("GET /admin/cache-stats", d.handleCacheStats)
+
+	for _, s := range d.Sources {
+		d.registerFeed(mux, s)
+		if er, ok := s.(source.ExtraRoutes); ok {
+			er.RegisterExtra(mux)
+		}
+	}
 
 	return d.logMiddleware(mux)
 }
 
-// handleWeiboFeed 处理 GET /rss/user/{id}。
-func (d *Deps) handleWeiboFeed(w http.ResponseWriter, r *http.Request) {
-	uid := r.PathValue("id")
-	if !uidRe.MatchString(uid) {
-		http.Error(w, "找不到用户，传入 UID 格式有误。uid: "+uid, http.StatusNotFound)
-		return
-	}
-
-	xmlData, miss, err := cache.CachedFeed(r.Context(), d.Cache, d.Collapse, weiboFeedPolicy, uid,
-		func(ctx context.Context) (string, error) {
-			data, err := d.Weibo.FetchUserLatestWeibo(ctx, uid)
-			if err != nil {
-				return "", err
-			}
-			items := make([]feed.Item, 0, len(data.StatusList))
-			for _, st := range data.StatusList {
-				if st == nil {
-					continue
-				}
-				items = append(items, feed.Item{
-					Title:       weibo.FeedTitle(st),
-					Description: weibo.StatusToHTML(d.Cfg, st),
-					Link:        "https://weibo.com/" + uid + "/" + st.Bid,
-					Time:        weibo.ParseWeiboTime(st.CreatedAt),
-				})
-			}
-			return feed.BuildRSS(
-				"https://weibo.com/"+uid,
-				data.ScreenName+"的微博",
-				data.Description,
-				items,
-			)
-		})
-	if err != nil {
-		d.handleFeedError(w, err, "uid: "+uid)
-		return
-	}
-
-	writeXML(w, xmlData)
-	setState(r).hit = boolToInt(!miss)
-}
-
-// handleInstagramFeed 处理 GET /rss/instagram/{username}。
-func (d *Deps) handleInstagramFeed(w http.ResponseWriter, r *http.Request) {
-	username := r.PathValue("username")
-	if !usernameRe.MatchString(username) {
-		http.Error(w, "用户名格式有误。username: "+username, http.StatusNotFound)
-		return
-	}
-
-	xmlData, miss, err := cache.CachedFeed(r.Context(), d.Cache, d.Collapse, instagramFeedPolicy, username,
-		func(ctx context.Context) (string, error) {
-			data, err := d.Instagram.FetchUserLatestPosts(ctx, username)
-			if err != nil {
-				return "", err
-			}
-			items := make([]feed.Item, 0, len(data.Media))
-			for _, m := range data.Media {
-				title := m.Caption
-				if runes := []rune(title); len(runes) > 25 {
-					title = string(runes[:25])
-				}
-				items = append(items, feed.Item{
-					Title:       title,
-					Description: d.Instagram.MediaToHTML(m),
-					Link:        "https://www.instagram.com/p/" + m.Shortcode + "/",
-					Time:        m.TakenAt,
-				})
-			}
-			return feed.BuildRSS(
-				"https://www.instagram.com/"+data.Username+"/",
-				data.Name+" (@"+data.Username+") 的 Instagram",
-				data.Description,
-				items,
-			)
-		})
-	if err != nil {
-		d.handleFeedError(w, err, "username: "+username)
-		return
-	}
-
-	writeXML(w, xmlData)
-	setState(r).hit = boolToInt(!miss)
-}
-
-// handleDomain2UID 处理 GET /api/domain2uid?domain=xxx。
-func (d *Deps) handleDomain2UID(w http.ResponseWriter, r *http.Request) {
-	domain := r.URL.Query().Get("domain")
-	if !domainRe.MatchString(domain) {
-		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "msg": "找不到用户，可能是地址格式不正确"})
-		return
-	}
-
-	v, err, _ := d.Collapse.Do("domain:"+domain, func() (any, error) {
-		return cache.Memo(r.Context(), d.Cache, "dm-"+domain, config.DomainTTL, func(ctx context.Context) (string, error) {
-			return d.Weibo.FetchUIDByDomain(ctx, domain)
-		})
-	})
-	if err != nil {
-		if errors.Is(err, weibo.ErrDomainNotFound) {
-			writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "msg": "找不到用户，可能是地址格式不正确"})
+// registerFeed 注册一个订阅源的 RSS 路由（通用逻辑）。
+func (d *Deps) registerFeed(mux *http.ServeMux, s source.Feed) {
+	mux.HandleFunc("GET "+s.Route(), func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if err := s.Validate(id); err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		d.Log.Error("domain2uid failed", "domain", domain, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "msg": "获取数据时发生了错误"})
-		return
+
+		xmlData, miss, err := cache.CachedFeed(r.Context(), d.Cache, d.Collapse, s.Policy(), id,
+			func(ctx context.Context) (string, error) {
+				ch, err := s.Fetch(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				return feed.BuildRSS(*ch)
+			})
+		if err != nil {
+			d.handleFeedError(w, s, id, err)
+			return
+		}
+
+		writeXML(w, xmlData)
+		setState(r).hit = boolToInt(!miss)
+	})
+}
+
+// handleFeedError 将源错误统一映射为 HTTP 响应。
+func (d *Deps) handleFeedError(w http.ResponseWriter, s source.Feed, id string, err error) {
+	switch {
+	case errors.Is(err, source.ErrNotFound):
+		http.Error(w, s.NotFoundMessage(id), http.StatusNotFound)
+	case errors.Is(err, throttler.ErrThrottled), errors.Is(err, anticrawl.ErrRisky):
+		http.Error(w, "暂时无法拉取到数据，请稍后再试。", http.StatusServiceUnavailable)
+	default:
+		d.Log.Error("feed error", "source", s.Name(), "id", id, "err", err)
+		http.Error(w, "未知错误，需管理员检查日志。", http.StatusInternalServerError)
 	}
-	uid, _ := v.(string)
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "uid": uid})
-	setState(r).hit = boolToInt(v != nil)
 }
 
 // handleCacheStats 处理 GET /admin/cache-stats。
@@ -189,23 +109,6 @@ func (d *Deps) handleCacheStats(w http.ResponseWriter, r *http.Request) {
 			"max":  d.Cache.MaxEntries(),
 		},
 	})
-}
-
-// handleFeedError 将数据源错误映射为 HTTP 响应。
-func (d *Deps) handleFeedError(w http.ResponseWriter, err error, ident string) {
-	switch {
-	case errors.Is(err, weibo.ErrUserNotFound):
-		http.Error(w,
-			"找不到用户，可能用户仅登录可见，不支持订阅。可以通过打开 https://m.weibo.cn/u/:uid 验证（uid: "+ident+"）",
-			http.StatusNotFound)
-	case errors.Is(err, instagram.ErrUserNotFound):
-		http.Error(w, "找不到用户，可能用户名有误、用户不存在或为私密账号。"+ident, http.StatusNotFound)
-	case errors.Is(err, throttler.ErrThrottled), errors.Is(err, anticrawl.ErrRisky):
-		http.Error(w, "暂时无法拉取到数据，请稍后再试。"+ident, http.StatusServiceUnavailable)
-	default:
-		d.Log.Error("feed error", "ident", ident, "err", err)
-		http.Error(w, "未知错误，需管理员检查日志。"+ident, http.StatusInternalServerError)
-	}
 }
 
 // logMiddleware 记录请求耗时与状态。

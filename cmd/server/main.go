@@ -16,6 +16,7 @@ import (
 
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
+	"github.com/zgq354/weibo-rss/internal/source"
 	"github.com/zgq354/weibo-rss/internal/source/instagram"
 	"github.com/zgq354/weibo-rss/internal/source/weibo"
 	"github.com/zgq354/weibo-rss/internal/web"
@@ -39,12 +40,10 @@ func main() {
 	go logCacheStats(ctx, memCache, log)
 
 	handler := web.NewHandler(web.Deps{
-		Cache:     memCache,
-		Collapse:  &singleflight.Group{},
-		Weibo:     weiboSvc,
-		Instagram: instagramSvc,
-		Cfg:       cfg,
-		Log:       log,
+		Cache:    memCache,
+		Collapse: &singleflight.Group{},
+		Sources:  []source.Feed{weiboSvc, instagramSvc},
+		Log:      log,
 	})
 
 	srv := &http.Server{

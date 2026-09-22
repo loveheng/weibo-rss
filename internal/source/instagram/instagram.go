@@ -9,7 +9,6 @@ package instagram
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html"
 	"log/slog"
@@ -22,6 +21,7 @@ import (
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
+	"github.com/zgq354/weibo-rss/internal/source"
 	"github.com/zgq354/weibo-rss/internal/throttler"
 )
 
@@ -33,9 +33,6 @@ const (
 	// IGAppID 为 Instagram web api 的公共 app id。
 	IGAppID = "936619743392459"
 )
-
-// ErrUserNotFound 表示用户名有误、用户不存在或为私密账号。
-var ErrUserNotFound = errors.New("instagram: user not found")
 
 // instagramPolicy 为数据缓存策略（info TTL 1 小时）。
 var instagramPolicy = cache.SourcePolicy{KeyPrefix: "instagram-", InfoTTL: config.InstagramTTL}
@@ -172,7 +169,7 @@ func (s *Service) getInstagramUserInfo(ctx context.Context, username string) (*U
 		}
 		u := r.Data.User
 		if u.ID == "" || u.Username == "" {
-			return fmt.Errorf("%w: username %s", ErrUserNotFound, username)
+			return fmt.Errorf("%w: username %s", source.ErrNotFound, username)
 		}
 
 		data := &UserData{

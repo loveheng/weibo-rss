@@ -67,13 +67,25 @@ docker compose up -d
 │   ├── anticrawl/       # 防风控：重试退避 + 风控钩子链
 │   ├── cache/           # LRU + TTL 缓存与缓存策略层
 │   ├── config/          # 配置与缓存 TTL
-│   ├── feed/            # RSS XML 组装
-│   ├── source/weibo/    # 微博源：客户端/接口/编排/渲染
-│   ├── source/instagram/# Instagram 源
+│   ├── feed/            # RSS Channel/XML 组装
+│   ├── source/          # 订阅源抽象（source.Feed 接口）
+│   │   ├── weibo/       # 微博源
+│   │   └── instagram/   # Instagram 源
 │   ├── throttler/       # 串行限流 + 熔断冷却
-│   └── web/             # HTTP 路由与中间件
+│   └── web/             # HTTP 路由与中间件（与具体源解耦）
 └── docker/Dockerfile    # 多阶段构建，scratch 极简镜像
 ```
+
+## 新增订阅源
+
+路由层与具体源完全解耦，新增一个源只需三步：
+
+1. 在 `internal/source/<name>/` 实现满足 `internal/source.Feed` 接口的服务：
+   - `Name` / `Route`（路由模板，如 `/rss/<name>/{id}`）/ `Policy`（XML 缓存策略）
+   - `Validate`（标识格式校验）/ `Fetch`（拉取并拼装 `feed.Channel`）/ `NotFoundMessage`
+   - 复用现成基础设施：`cache.SourcePolicy`（数据缓存）、`throttler.Throttler`（串行限流熔断）、`anticrawl`（风控重试钩子）
+2. 如需 RSS 之外的接口（如微博的 domain2uid），实现可选的 `source.ExtraRoutes`。
+3. 在 `cmd/server/main.go` 的 `Deps.Sources` 中注册即可，路由/缓存/请求合并/错误映射自动生效。
 
 ## 相关项目
 

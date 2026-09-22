@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
@@ -56,12 +57,14 @@ type UserData struct {
 	StatusList  []*Status
 }
 
-// Service 为微博数据源服务。
+// Service 为微博数据源服务，实现 source.Feed 与 source.ExtraRoutes。
 type Service struct {
+	cfg    config.Config
 	cache  *cache.Cache
 	client *Client
 	hooks  *anticrawl.Hooks
 	log    *slog.Logger
+	sf     *singleflight.Group
 
 	indexRunner    *throttler.Throttler
 	detailRunner   *throttler.Throttler
@@ -76,10 +79,12 @@ func NewService(cfg config.Config, c *cache.Cache, log *slog.Logger) *Service {
 	}
 	client := NewClient(cfg, log)
 	s := &Service{
+		cfg:            cfg,
 		cache:          c,
 		client:         client,
 		hooks:          client.Hooks(),
 		log:            log,
+		sf:             &singleflight.Group{},
 		indexRunner:    throttler.New("weibo-index", log, throttler.DefaultCooldown),
 		detailRunner:   throttler.New("weibo-detail", log, throttler.DefaultCooldown),
 		longTextRunner: throttler.New("weibo-longText", log, throttler.DefaultCooldown),
