@@ -2,6 +2,7 @@
 package config
 
 import (
+	"net/url"
 	"os"
 	"time"
 )
@@ -57,4 +58,12 @@ func envOr(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// WrapImageURL 包装图片反代前缀；未配置 ImageCache 时返回原始 URL。
+func (c Config) WrapImageURL(rawURL string) string {
+	if c.ImageCache == "" {
+		return rawURL
+	}
+	return c.ImageCache + url.QueryEscape(rawURL)
 }

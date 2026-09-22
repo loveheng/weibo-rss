@@ -64,14 +64,16 @@ docker compose up -d
 ```
 ├── cmd/server/          # 程序入口
 ├── internal/
-│   ├── anticrawl/       # 防风控：重试退避 + 风控钩子链
+│   ├── anticrawl/       # 防风控：重试退避 + 风控钩子链 + 抖动
 │   ├── cache/           # LRU + TTL 缓存与缓存策略层
 │   ├── config/          # 配置与缓存 TTL
 │   ├── feed/            # RSS Channel/XML 组装
+│   ├── httputil/        # HTTP 响应写出工具
 │   ├── source/          # 订阅源抽象（source.Feed 接口）
 │   │   ├── weibo/       # 微博源
 │   │   └── instagram/   # Instagram 源
 │   ├── throttler/       # 串行限流 + 熔断冷却
+│   ├── upstream/        # 公共上游客户端：代理/UA/Cookie + 限流重试骨架
 │   └── web/             # HTTP 路由与中间件（与具体源解耦）
 └── docker/Dockerfile    # 多阶段构建，scratch 极简镜像
 ```

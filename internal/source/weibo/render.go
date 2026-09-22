@@ -4,7 +4,6 @@ package weibo
 
 import (
 	"fmt"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -35,14 +34,6 @@ var (
 	newlineRe = regexp.MustCompile(`\n`)
 )
 
-// wrapImageCache 包装图片反代前缀。
-func wrapImageCache(cfg config.Config, rawURL string) string {
-	if cfg.ImageCache == "" {
-		return rawURL
-	}
-	return cfg.ImageCache + url.QueryEscape(rawURL)
-}
-
 // StatusToHTML 将微博条目转换为 RSS 正文 HTML：
 // 表情转文字、外链图标去除、转发块引用、配图（走图片反代）。
 func StatusToHTML(cfg config.Config, st *Status) string {
@@ -62,7 +53,7 @@ func StatusToHTML(cfg config.Config, st *Status) string {
 	// 微博配图
 	for _, pic := range st.Pics {
 		b.WriteString("<br><br>")
-		u := wrapImageCache(cfg, pic.Large.URL)
+		u := cfg.WrapImageURL(pic.Large.URL)
 		fmt.Fprintf(&b, `<a href="%s" target="_blank"><img src="%s"></a>`, u, u)
 	}
 	return b.String()

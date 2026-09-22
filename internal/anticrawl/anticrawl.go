@@ -114,6 +114,15 @@ func sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// Jitter 随机等待 [0, max)，用于请求前抖动以错开并发；
+// ctx 取消时提前返回。
+func Jitter(ctx context.Context, max time.Duration) error {
+	if max <= 0 {
+		return nil
+	}
+	return sleep(ctx, time.Duration(rand.Int64N(int64(max))))
+}
+
 // drainClose 读取并关闭响应体，保证连接可复用。
 func drainClose(resp *http.Response) {
 	if resp.Body != nil {

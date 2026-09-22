@@ -6,7 +6,6 @@ package weibo
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/feed"
+	"github.com/zgq354/weibo-rss/internal/httputil"
 	"github.com/zgq354/weibo-rss/internal/throttler"
 )
 
@@ -110,7 +110,5 @@ func (s *Service) handleDomain2UID(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	httputil.WriteJSON(w, status, body)
 }

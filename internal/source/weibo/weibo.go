@@ -17,6 +17,7 @@ import (
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
 	"github.com/zgq354/weibo-rss/internal/throttler"
+	"github.com/zgq354/weibo-rss/internal/upstream"
 )
 
 // 微博源各层缓存策略（key 前缀沿用原 long-/dt- 约定）。
@@ -59,12 +60,13 @@ type UserData struct {
 
 // Service 为微博数据源服务，实现 source.Feed 与 source.ExtraRoutes。
 type Service struct {
-	cfg    config.Config
-	cache  *cache.Cache
-	client *Client
-	hooks  *anticrawl.Hooks
-	log    *slog.Logger
-	sf     *singleflight.Group
+	cfg     config.Config
+	cache   *cache.Cache
+	client  *Client
+	fetcher *upstream.Fetcher
+	hooks   *anticrawl.Hooks
+	log     *slog.Logger
+	sf      *singleflight.Group
 
 	indexRunner    *throttler.Throttler
 	detailRunner   *throttler.Throttler
@@ -90,6 +92,7 @@ func NewService(cfg config.Config, c *cache.Cache, log *slog.Logger) *Service {
 		longTextRunner: throttler.New("weibo-longText", log, throttler.DefaultCooldown),
 		domainRunner:   throttler.New("weibo-domain", log, throttler.DefaultCooldown),
 	}
+	s.fetcher = upstream.NewFetcher(client.Up(), s.hooks)
 	return s
 }
 

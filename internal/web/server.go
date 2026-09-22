@@ -8,7 +8,6 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/feed"
+	"github.com/zgq354/weibo-rss/internal/httputil"
 	"github.com/zgq354/weibo-rss/internal/source"
 	"github.com/zgq354/weibo-rss/internal/throttler"
 )
@@ -154,14 +154,11 @@ func (r *recorder) WriteHeader(code int) {
 }
 
 func writeXML(w http.ResponseWriter, xml string) {
-	w.Header().Set("Content-Type", "text/xml")
-	_, _ = w.Write([]byte(xml))
+	httputil.WriteXML(w, xml)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
+	httputil.WriteJSON(w, status, body)
 }
 
 func boolToInt(b bool) int {
