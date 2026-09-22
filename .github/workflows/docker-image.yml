@@ -5,12 +5,14 @@ on:
     branches:
       - master
       - main
+      - go-rewrite
     tags:
       - 'v*'
   pull_request:
     branches:
       - master
       - main
+      - go-rewrite
 
 env:
   REGISTRY: ghcr.io
