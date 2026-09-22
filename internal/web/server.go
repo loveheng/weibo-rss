@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -13,7 +12,6 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/zgq354/weibo-rss"
 	"github.com/zgq354/weibo-rss/internal/anticrawl"
 	"github.com/zgq354/weibo-rss/internal/cache"
 	"github.com/zgq354/weibo-rss/internal/config"
@@ -66,13 +64,6 @@ func NewHandler(d Deps) http.Handler {
 	mux.HandleFunc("GET /rss/instagram/{username}", d.handleInstagramFeed)
 	mux.HandleFunc("GET /api/domain2uid", d.handleDomain2UID)
 	mux.HandleFunc("GET /admin/cache-stats", d.handleCacheStats)
-
-	// 静态资源来自嵌入的 public/（根包 weiborss）
-	sub, err := fs.Sub(weiborss.Public, "public")
-	if err != nil {
-		panic(err)
-	}
-	mux.Handle("GET /", http.FileServerFS(sub))
 
 	return d.logMiddleware(mux)
 }

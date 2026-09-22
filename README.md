@@ -5,11 +5,11 @@
 让你不再错过喜欢的博主的动态更新，即使身处纷繁复杂中。
 
 ## 特点
-1. 简单：主页链接一键转换 RSS 订阅源地址
-2. 克制：严格限制程序对微博的并发请求，不产生额外压力
-3. 省资源：基于 Go 实现，单二进制 + 纯内存缓存，常驻内存 ~15MB，镜像 ~7MB
-4. 高可用：支持个人账号 Cookie 兜底与访客 Cookie 自动轮换，提升抗封禁能力
-5. 多源：内置微博与 Instagram 订阅支持
+1. 克制：严格限制程序对微博的并发请求，不产生额外压力
+2. 省资源：基于 Go 实现，单二进制 + 纯内存缓存，常驻内存 ~15MB，镜像 ~7MB
+3. 高可用：支持个人账号 Cookie 兜底与访客 Cookie 自动轮换，提升抗封禁能力
+4. 多源：内置微博与 Instagram 订阅支持
+5. 纯 API：无前端页面，仅提供 RSS 订阅与辅助接口
 
 ## 手动部署
 
@@ -58,7 +58,6 @@ docker compose up -d
 | `GET /rss/instagram/:username` | Instagram 用户 RSS |
 | `GET /api/domain2uid?domain=xxx` | 微博自定义域名转 uid |
 | `GET /admin/cache-stats` | 缓存统计 |
-| `GET /` | 首页（链接一键转换工具） |
 
 ## 项目结构
 
@@ -73,7 +72,6 @@ docker compose up -d
 │   ├── source/instagram/# Instagram 源
 │   ├── throttler/       # 串行限流 + 熔断冷却
 │   └── web/             # HTTP 路由与中间件
-├── public/              # 前端静态资源（go:embed 嵌入）
 └── docker/Dockerfile    # 多阶段构建，scratch 极简镜像
 ```
 

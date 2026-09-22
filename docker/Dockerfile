@@ -1,7 +1,7 @@
 # Go 版 weibo-rss 极简镜像（多阶段构建）
 # 构建：docker build -f docker/Dockerfile -t weibo-rss-go .
 # 运行：docker run --rm -p 3000:3000 -e WEIBO_COOKIE=xxx weibo-rss-go
-# 最终镜像 ~7MB（单二进制 + CA 证书，静态资源已通过 go:embed 嵌入）
+# 最终镜像 ~6MB（纯 API 单二进制 + CA 证书，scratch 运行时）
 
 # 编译阶段
 FROM golang:1.22-alpine AS builder
